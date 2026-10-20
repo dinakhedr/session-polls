@@ -66,7 +66,9 @@ This email and password are what you will use to sign in to the app.
    | Name | Value |
    |---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | your Project URL |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your anon / publishable key |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | your publishable key (`NEXT_PUBLIC_SUPABASE_ANON_KEY` also works) |
+
+   Tip: in Supabase, the **Connect** button → **Framework** → `.env.local` tab shows both lines ready to copy. You can paste both lines at once into Vercel's first *Key* box and Vercel fills in both variables.
 
 5. Click **Deploy** and wait one to two minutes.
 6. Vercel shows your app's address, e.g. `session-polls-dinakhedr.vercel.app`. That is your polling app.
@@ -141,7 +143,7 @@ Open the session and click **Export results (CSV)**. Each row is one response, w
 ## For developers
 
 ```bash
-cp .env.example .env.local   # add your Supabase URL and anon key
+cp .env.example .env.local   # add your Supabase URL and publishable key
 npm install
 npm run dev                   # http://localhost:3000
 ```
