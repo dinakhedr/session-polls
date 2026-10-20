@@ -13,7 +13,7 @@ interface SessionRow {
   title: string;
   code: string;
   created_at: string;
-  polls: { count: number }[];
+  pollCount: number;
 }
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -27,12 +27,24 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase()
-      .from('sessions')
-      .select('id, title, code, created_at, polls(count)')
-      .order('created_at', { ascending: false });
-    if (error) setError('Your sessions could not be loaded. Please refresh the page.');
-    else setSessions((data ?? []) as unknown as SessionRow[]);
+    const sb = supabase();
+    // Two simple queries (no aggregate functions, which Supabase disables by default).
+    const [{ data, error }, { data: pollRows }] = await Promise.all([
+      sb.from('sessions').select('id, title, code, created_at').order('created_at', { ascending: false }),
+      sb.from('polls').select('session_id'),
+    ]);
+    if (error) {
+      setError('Your sessions could not be loaded. Please refresh the page.');
+      return;
+    }
+    setError(null);
+    const counts: Record<string, number> = {};
+    for (const p of (pollRows ?? []) as { session_id: string }[]) {
+      counts[p.session_id] = (counts[p.session_id] ?? 0) + 1;
+    }
+    setSessions(
+      ((data ?? []) as Omit<SessionRow, 'pollCount'>[]).map((s) => ({ ...s, pollCount: counts[s.id] ?? 0 }))
+    );
   }, []);
 
   useEffect(() => {
@@ -107,7 +119,7 @@ export default function DashboardPage() {
           {sessions && sessions.length > 0 && (
             <div className="grid">
               {sessions.map((s, i) => {
-                const n = s.polls?.[0]?.count ?? 0;
+                const n = s.pollCount;
                 return (
                   <Link
                     key={s.id}
