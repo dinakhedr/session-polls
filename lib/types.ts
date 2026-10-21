@@ -1,6 +1,6 @@
 import type React from 'react';
 
-export type PollKind = 'choice' | 'rating';
+export type PollKind = 'choice' | 'rating' | 'words';
 export type ResultsMode = 'live' | 'after_close';
 
 export interface Partner {
@@ -43,6 +43,8 @@ export interface Results {
   total: number;
   counts: number[];
   average: number | null;
+  /** Word cloud answers, grouped and counted (most frequent first). */
+  words?: { text: string; count: number }[];
 }
 
 /** Polls and responses per session, from the session_stats() function. */
@@ -71,7 +73,9 @@ export interface LiveState {
 }
 
 export const kindLabel = (p: { kind: PollKind; allow_multiple: boolean; scale_max: number }) =>
-  p.kind === 'rating'
+  p.kind === 'words'
+    ? 'Word cloud'
+    : p.kind === 'rating'
     ? `Rating 1–${p.scale_max}`
     : p.allow_multiple
       ? 'Multiple choice · several answers'

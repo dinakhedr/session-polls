@@ -5,6 +5,7 @@ export interface VoteRow {
   voter_id: string;
   choices: number[] | null;
   rating: number | null;
+  answer?: string | null;
   created_at: string;
 }
 
@@ -34,7 +35,9 @@ export function buildCsv(
     if (i === undefined) continue;
     const p = polls[i];
     const answer =
-      p.kind === 'rating'
+      p.kind === 'words'
+        ? v.answer ?? ''
+        : p.kind === 'rating'
         ? String(v.rating ?? '')
         : (v.choices ?? []).map((c) => p.options[c] ?? `#${c + 1}`).join(' | ');
     rows.push([
@@ -43,7 +46,7 @@ export function buildCsv(
       sessionTitle,
       i + 1,
       p.question,
-      p.kind === 'rating' ? `Rating 1-${p.scale_max}` : 'Multiple choice',
+      p.kind === 'words' ? 'Word cloud' : p.kind === 'rating' ? `Rating 1-${p.scale_max}` : 'Multiple choice',
       answer,
       `P-${v.voter_id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}`,
       v.created_at.replace('T', ' ').slice(0, 19),

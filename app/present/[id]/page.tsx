@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import ResultsView from '@/components/ResultsView';
+import Dialog, { type DialogConfig } from '@/components/Dialog';
 import { roomChannel, supabase } from '@/lib/supabase';
 import { useHost } from '@/lib/useHost';
 import { kindLabel, prettyCode, type Poll, type Results, type Session } from '@/lib/types';
@@ -24,6 +25,7 @@ export default function PresenterPage() {
   const [error, setError] = useState<string | null>(null);
   const [idle, setIdle] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
   const roomRef = useRef<RealtimeChannel | null>(null);
   const lastPhoneRefresh = useRef(0);
@@ -166,6 +168,24 @@ export default function PresenterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, busy]);
 
+  /** Moderation: remove an answer (all identical entries) from the word cloud. */
+  function removeWord(text: string) {
+    if (!active) return;
+    setDialog({
+      title: 'Remove this answer?',
+      message: <>“{text}” will be removed from the word cloud for everyone.</>,
+      confirmLabel: 'Remove answer',
+      danger: true,
+      onConfirm: async () => {
+        const { error } = await supabase().rpc('remove_answer', { p_poll: active.id, p_text: text });
+        if (error) return 'The answer could not be removed.';
+        await loadResults();
+        notifyPhones();
+        return null;
+      },
+    });
+  }
+
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
@@ -300,6 +320,7 @@ export default function PresenterPage() {
                   scaleMax={active.scale_max}
                   results={results}
                   dark
+                  onRemoveWord={removeWord}
                 />
               ) : (
                 <div className="present__hidden">
@@ -360,6 +381,7 @@ export default function PresenterPage() {
           </Link>
         </div>
       </footer>
+      <Dialog config={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 }

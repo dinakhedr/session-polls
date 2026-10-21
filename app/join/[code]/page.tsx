@@ -19,6 +19,7 @@ export default function ParticipantPage() {
   const [live, setLive] = useState<LiveState | null>(null);
   const [choices, setChoices] = useState<number[]>([]);
   const [rating, setRating] = useState<number | null>(null);
+  const [answer, setAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const requestSeq = useRef(0);
@@ -72,6 +73,7 @@ export default function ParticipantPage() {
   useEffect(() => {
     setChoices([]);
     setRating(null);
+    setAnswer('');
     setMessage(null);
   }, [pollId]);
 
@@ -96,6 +98,7 @@ export default function ParticipantPage() {
         p_voter: getVoterId(),
         p_choices: poll.kind === 'choice' ? choices : null,
         p_rating: poll.kind === 'rating' ? rating : null,
+        p_answer: poll.kind === 'words' ? answer.trim() : null,
       });
       if (error) throw error;
       if (data === 'closed') setMessage('Voting has just closed for this poll.');
@@ -109,7 +112,9 @@ export default function ParticipantPage() {
   }
 
   const canSubmit =
-    !!poll && !submitting && (poll.kind === 'choice' ? choices.length > 0 : rating !== null);
+    !!poll &&
+    !submitting &&
+    (poll.kind === 'choice' ? choices.length > 0 : poll.kind === 'words' ? answer.trim().length > 0 : rating !== null);
 
   return (
     <div className="page">
@@ -170,7 +175,9 @@ export default function ParticipantPage() {
             <div className="stack stack--lg fade-up" key={poll.id}>
               <div className="stack stack--sm">
                 <p className="eyebrow">
-                  {poll.kind === 'rating'
+                  {poll.kind === 'words'
+                    ? 'Type a short answer'
+                    : poll.kind === 'rating'
                     ? `Rate from 1 to ${poll.scale_max}`
                     : poll.allow_multiple
                       ? 'Select all that apply'
@@ -182,7 +189,29 @@ export default function ParticipantPage() {
               {/* Voting */}
               {poll.is_open && !live.has_voted && (
                 <div className="stack">
-                  {poll.kind === 'choice' ? (
+                  {poll.kind === 'words' ? (
+                    <form
+                      className="field"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (canSubmit) submit();
+                      }}
+                    >
+                      <label htmlFor="answer" className="visually-hidden">
+                        Your answer
+                      </label>
+                      <input
+                        id="answer"
+                        className="answer-input"
+                        maxLength={40}
+                        autoComplete="off"
+                        placeholder="Your answer"
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                      />
+                      <span className="field__hint answer-count">{answer.length}/40</span>
+                    </form>
+                  ) : poll.kind === 'choice' ? (
                     <div
                       className="vote-options"
                       role={poll.allow_multiple ? 'group' : 'radiogroup'}

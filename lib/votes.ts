@@ -9,7 +9,7 @@ export async function fetchAllVotes(pollIds: string[]): Promise<VoteRow[]> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase()
       .from('votes')
-      .select('poll_id, voter_id, choices, rating, created_at')
+      .select('poll_id, voter_id, choices, rating, answer, created_at')
       .in('poll_id', pollIds)
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1);

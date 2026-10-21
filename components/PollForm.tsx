@@ -35,7 +35,7 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
 
   const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
   const valid =
-    question.trim().length > 0 && (kind === 'rating' || cleanOptions.length >= 2);
+    question.trim().length > 0 && (kind !== 'choice' || cleanOptions.length >= 2);
 
   function setOption(i: number, value: string) {
     setOptions((o) => o.map((x, j) => (j === i ? value : x)));
@@ -89,6 +89,10 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
             <input type="radio" name="kind" checked={kind === 'rating'} onChange={() => setKind('rating')} />
             <span>Rating scale</span>
           </label>
+          <label className="pill-option">
+            <input type="radio" name="kind" checked={kind === 'words'} onChange={() => setKind('words')} />
+            <span>Word cloud</span>
+          </label>
         </div>
       </fieldset>
 
@@ -134,6 +138,11 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
             Participants can select more than one answer
           </label>
         </>
+      ) : kind === 'words' ? (
+        <p className="notice">
+          Participants type a short answer (up to 40 characters). Identical answers are grouped, and the most
+          frequent ones appear largest. Tip: ask for “2–3 words” in your question.
+        </p>
       ) : (
         <fieldset className="field">
           <legend>Scale</legend>

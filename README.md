@@ -7,7 +7,7 @@ Participants join by scanning a QR code or typing a 6-digit code — no sign-up 
 
 - Organise work as **Partners → Programs → Sessions** (e.g. ICEALEX → ECH Impact Edition → Day 1)
 - Rename, duplicate and delete sessions; rename and delete partners and programs, with clear confirmations
-- Multiple-choice polls (one or several answers) and rating scales (1–5 or 1–10)
+- Multiple-choice polls (one or several answers), rating scales (1–5 or 1–10) and **word clouds** (short typed answers; click a word on the presenter screen to remove it)
 - Per question: show results **live** or **only after voting closes**
 - Duplicate a question or a whole session (with all its questions), without the votes
 - Full-screen presenter view with a QR code and results that update live
@@ -98,6 +98,7 @@ When a new version needs a database change, an update file is added to the `supa
 | File | Adds |
 |---|---|
 | `supabase/update-01-partners-programs.sql` | Partners, programs, result timing per question, duplicate question/session |
+| `supabase/update-02-word-cloud.sql` | Word cloud questions, with answer removal from the presenter screen |
 
 New installations do not need update files: `supabase/schema.sql` already includes them.
 

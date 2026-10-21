@@ -1,4 +1,5 @@
 import type { PollKind, Results } from '@/lib/types';
+import WordCloud from './WordCloud';
 
 interface Props {
   kind: PollKind;
@@ -6,13 +7,23 @@ interface Props {
   scaleMax: number;
   results: Results | null | undefined;
   dark?: boolean;
+  /** Presenter only: remove an answer from a word cloud. */
+  onRemoveWord?: (text: string) => void;
 }
 
 /** Live results: horizontal bars for multiple choice, columns + average for ratings. */
-export default function ResultsView({ kind, options, scaleMax, results, dark = false }: Props) {
+export default function ResultsView({ kind, options, scaleMax, results, dark = false, onRemoveWord }: Props) {
   const total = results?.total ?? 0;
   const counts = results?.counts ?? [];
   const cls = `results${dark ? ' results--dark' : ''}`;
+
+  if (kind === 'words') {
+    return (
+      <div className={cls}>
+        <WordCloud words={results?.words ?? []} dark={dark} onRemove={onRemoveWord} />
+      </div>
+    );
+  }
 
   if (kind === 'rating') {
     const max = Math.max(1, ...counts);
