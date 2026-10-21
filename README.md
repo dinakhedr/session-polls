@@ -5,7 +5,11 @@ Participants join by scanning a QR code or typing a 6-digit code — no sign-up 
 
 **Features**
 
+- Organise work as **Partners → Programs → Sessions** (e.g. ICEALEX → ECH Impact Edition → Day 1)
+- Rename, duplicate and delete sessions; rename and delete partners and programs, with clear confirmations
 - Multiple-choice polls (one or several answers) and rating scales (1–5 or 1–10)
+- Per question: show results **live** or **only after voting closes**
+- Duplicate a question or a whole session (with all its questions), without the votes
 - Full-screen presenter view with a QR code and results that update live
 - One vote per device per poll
 - Show or hide results, open or close voting, move between polls
@@ -87,12 +91,25 @@ In Vercel, open the project → **Settings** → **Domains** → add `polls.dina
 
 ---
 
+## Updating an existing installation
+
+When a new version needs a database change, an update file is added to the `supabase` folder. Run each update **once**, in order, in Supabase → **SQL Editor** → **New query** → paste → **Run**:
+
+| File | Adds |
+|---|---|
+| `supabase/update-01-partners-programs.sql` | Partners, programs, result timing per question, duplicate question/session |
+
+New installations do not need update files: `supabase/schema.sql` already includes them.
+
+---
+
 ## Running a session
 
 **Before the session**
 
-1. Sign in, create a session (e.g. *Growth Strategy Workshop — Day 1*) and add your polls in order.
-2. Open the app the day before, so the database is awake (see "Good to know" below).
+1. Sign in. Add a **partner** (e.g. *ICEALEX*), then a **program** under it (e.g. *ECH Impact Edition*), then a **session** in that program (e.g. *Day 1*).
+2. Add your polls in order. For each, choose whether results show **live** or **after you close voting**. Use **Duplicate** to reuse a question, or **Duplicate session** to repeat a whole session for another group.
+3. Open the app the day before, so the database is awake (see "Good to know" below).
 
 **During the session**
 
@@ -107,7 +124,7 @@ In Vercel, open the project → **Settings** → **Domains** → add `polls.dina
 |---|---|---|
 | Next poll | Next poll → | → , Page Down, Space |
 | Previous poll / welcome screen | ← Previous | ← , Page Up |
-| Close or reopen voting | Close voting | V |
+| Close or reopen voting (reveals results for "after closing" polls) | Close voting | V |
 | Hide or show results (screen and phones) | Hide results | R |
 | Hide or show the QR code | Hide QR | Q |
 | Full screen | Full screen | F |

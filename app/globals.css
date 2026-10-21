@@ -91,6 +91,8 @@ button.lnk { background-color: transparent; border: 0; padding: 0; cursor: point
 .btn--white { background: var(--white); color: var(--ink); font-weight: 500; }
 .btn--ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
 .btn--danger { background: transparent; color: var(--danger); border: 1px solid rgba(155, 44, 31, .3); font-weight: 500; }
+.btn--danger-solid { background: var(--danger); color: var(--white); }
+.btn--danger-solid:hover { color: var(--white); background: #842417; }
 .btn--sm { min-height: 42px; padding: 10px 20px; font-size: 15px; }
 .btn--block { width: 100%; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
@@ -140,6 +142,8 @@ a.card:hover { transform: translateY(-4px); color: inherit; }
 .chip--white { background: var(--white); }
 .chip--live { background: var(--ink); color: var(--white); }
 .chip--live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #7BC47F; animation: pulse 1.8s infinite; }
+.chip--small { padding: 4px 12px; font-size: 13px; }
+.program-select { max-width: 420px; }
 .code-chip { font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
 
 /* ---------- 8. Forms ---------- */
@@ -154,6 +158,14 @@ a.card:hover { transform: translateY(-4px); color: inherit; }
   transition: border-color .2s, box-shadow .2s;
 }
 .field textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+.field select {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background-color: var(--white);
+  border: 1px solid rgba(12, 12, 11, 0.22); border-radius: 14px; padding: 14px 44px 14px 16px;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237A6242' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center;
+}
+.field select:focus { outline: none; border-color: var(--bronze); box-shadow: 0 0 0 3px rgba(156, 132, 98, 0.22); }
 .field input:focus, .field textarea:focus { outline: none; border-color: var(--bronze); box-shadow: 0 0 0 3px rgba(156, 132, 98, 0.22); }
 .field ::placeholder { color: var(--subtle); }
 
@@ -261,6 +273,39 @@ a.card:hover { transform: translateY(-4px); color: inherit; }
   .poll-item__actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 .empty { text-align: center; padding: 48px 24px; border: 1.5px dashed var(--stroke); border-radius: 28px; color: var(--muted); }
+
+/* ---------- 11b. Dashboard: partners, programs, sessions ---------- */
+.partner { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 32px); display: grid; gap: 20px; }
+.partner__head, .program__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 20px; }
+.partner__name { font-size: clamp(24px, 2.6vw, 32px); font-weight: 700; letter-spacing: -0.045em; line-height: 1.1; }
+.program { background: var(--sand-soft); border-radius: 24px; padding: clamp(16px, 2.4vw, 24px); display: grid; gap: 16px; }
+.program__name { font-size: 20px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.25; }
+.actions { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.text-btn {
+  display: inline-flex; align-items: center; background: none; border: 0; padding: 7px 12px; border-radius: 999px;
+  font: inherit; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; text-decoration: none;
+  transition: background-color .2s, color .2s;
+}
+.text-btn:hover:not(:disabled) { background: var(--sand); color: var(--ink); }
+.text-btn:disabled { opacity: .4; cursor: not-allowed; }
+.text-btn--strong { color: var(--ink); font-weight: 600; }
+.text-btn--danger:hover:not(:disabled) { background: #F6E3DF; color: var(--danger); }
+.session-card { gap: 12px; }
+.session-card__link { text-decoration: none; color: var(--ink); }
+.session-card__link:hover { color: var(--bronze); }
+.session-card__chips { gap: 6px; }
+.session-card .actions { margin: auto -12px -6px; }
+.quick-create { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+@media (max-width: 760px) { .quick-create { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- 11c. Dialog ---------- */
+.dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: var(--gutter); background: rgba(12, 12, 11, 0.45); animation: fade-in .2s ease both; }
+.dialog { width: min(100%, 500px); background: var(--white); border-radius: 28px; padding: clamp(24px, 4vw, 36px); display: flex; flex-direction: column; gap: 18px; box-shadow: 0 30px 80px rgba(12, 12, 11, 0.25); animation: fade-up .4s var(--ease) both; }
+.dialog__title { font-size: 24px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.2; }
+.dialog__text { font-size: 16px; line-height: 1.6; color: var(--text); }
+.dialog__warn { background: #F6E3DF; color: var(--danger); border-radius: 14px; padding: 12px 16px; font-size: 15px; line-height: 1.5; font-weight: 500; }
+.dialog__actions { justify-content: flex-end; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---------- 12. Presenter screen ---------- */
 .present { min-height: 100vh; min-height: 100dvh; background: var(--ink); color: var(--white); display: grid; grid-template-rows: auto 1fr auto; }

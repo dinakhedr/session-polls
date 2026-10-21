@@ -33,6 +33,8 @@ export default function PresenterPage() {
   const active = activeIndex >= 0 ? polls[activeIndex] : null;
   const activeId = active?.id ?? null;
   const joinUrl = session && origin ? `${origin}/join/${session.code}` : '';
+  // Results show when the host allows them, and — for "after closing" polls — once voting is closed.
+  const resultsVisible = !!session?.show_results && !!active && (active.results_mode !== 'after_close' || !active.is_open);
 
   useEffect(() => setOrigin(window.location.origin), []);
 
@@ -65,8 +67,8 @@ export default function PresenterPage() {
     const { data } = await supabase().rpc('host_poll_results', { p_poll: activeId });
     if (data) setResults(data as Results);
     // Keep results on phones fresh too, at most every 3 seconds.
-    if (session?.show_results && Date.now() - lastPhoneRefresh.current > 3000) notifyPhones();
-  }, [activeId, session?.show_results, notifyPhones]);
+    if (resultsVisible && Date.now() - lastPhoneRefresh.current > 3000) notifyPhones();
+  }, [activeId, resultsVisible, notifyPhones]);
 
   const scheduleResults = useCallback(() => {
     if (reloadTimer.current) return;
@@ -282,6 +284,7 @@ export default function PresenterPage() {
             <div className="present__content fade-up" key={active.id}>
               <p className="eyebrow">
                 Poll {activeIndex + 1} of {polls.length} · {kindLabel(active)}
+                {active.results_mode === 'after_close' ? ' · Results after voting' : ''}
               </p>
               <h1 className="present__question">{active.question}</h1>
               <div className="present__meta">
@@ -290,7 +293,7 @@ export default function PresenterPage() {
                   {total} {total === 1 ? 'response' : 'responses'}
                 </span>
               </div>
-              {session.show_results ? (
+              {resultsVisible ? (
                 <ResultsView
                   kind={active.kind}
                   options={active.options}
@@ -305,7 +308,9 @@ export default function PresenterPage() {
                     <span />
                     <span />
                   </div>
-                  Results are hidden while people vote.
+                  {session.show_results
+                    ? 'Results will be revealed when voting closes.'
+                    : 'Results are hidden while people vote.'}
                 </div>
               )}
             </div>
@@ -328,7 +333,11 @@ export default function PresenterPage() {
           </button>
           {active && (
             <button className="btn btn--ghost btn--sm" onClick={toggleVoting} disabled={busy}>
-              {active.is_open ? 'Close voting' : 'Reopen voting'}
+              {active.is_open
+                ? active.results_mode === 'after_close' && session.show_results
+                  ? 'Close voting & reveal results'
+                  : 'Close voting'
+                : 'Reopen voting'}
             </button>
           )}
           <button className="btn btn--ghost btn--sm" onClick={toggleResults} disabled={busy}>

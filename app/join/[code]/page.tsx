@@ -247,9 +247,13 @@ export default function ParticipantPage() {
                           {live.has_voted ? 'Thank you, your vote is in.' : 'Voting is closed for this poll.'}
                         </p>
                         <p className="card__text">
-                          {live.show_results
-                            ? 'Results update live below.'
-                            : 'Results will be shared on the main screen.'}
+                          {!live.show_results
+                            ? 'Results will be shared on the main screen.'
+                            : live.results
+                              ? poll.is_open
+                                ? 'Results update live below.'
+                                : 'Final results are below.'
+                              : 'Results will appear here when voting closes.'}
                         </p>
                       </div>
                       <div className={`status-icon${live.has_voted ? ' status-icon--done' : ''}`} aria-hidden="true">

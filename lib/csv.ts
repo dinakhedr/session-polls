@@ -14,10 +14,15 @@ const esc = (v: string | number) => {
 };
 
 /** Builds a CSV of all responses (one row per vote), readable in Excel and Google Sheets. */
-export function buildCsv(sessionTitle: string, polls: Poll[], votes: VoteRow[]): string {
+export function buildCsv(
+  sessionTitle: string,
+  polls: Poll[],
+  votes: VoteRow[],
+  context: { partner?: string; program?: string } = {}
+): string {
   const pollIndex = new Map(polls.map((p, i) => [p.id, i]));
   const rows: (string | number)[][] = [
-    ['Session', 'Poll #', 'Question', 'Type', 'Answer', 'Participant', 'Time (UTC)'],
+    ['Partner', 'Program', 'Session', 'Poll #', 'Question', 'Type', 'Answer', 'Participant', 'Time (UTC)'],
   ];
   const sorted = [...votes].sort(
     (a, b) =>
@@ -33,6 +38,8 @@ export function buildCsv(sessionTitle: string, polls: Poll[], votes: VoteRow[]):
         ? String(v.rating ?? '')
         : (v.choices ?? []).map((c) => p.options[c] ?? `#${c + 1}`).join(' | ');
     rows.push([
+      context.partner ?? '',
+      context.program ?? '',
       sessionTitle,
       i + 1,
       p.question,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Poll, PollKind } from '@/lib/types';
+import type { Poll, PollKind, ResultsMode } from '@/lib/types';
 
 export interface PollDraft {
   question: string;
@@ -9,6 +9,7 @@ export interface PollDraft {
   options: string[];
   allow_multiple: boolean;
   scale_max: number;
+  results_mode: ResultsMode;
 }
 
 interface Props {
@@ -28,6 +29,7 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
   );
   const [allowMultiple, setAllowMultiple] = useState(initial?.allow_multiple ?? false);
   const [scaleMax, setScaleMax] = useState(initial?.scale_max ?? 5);
+  const [resultsMode, setResultsMode] = useState<ResultsMode>(initial?.results_mode ?? 'live');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +56,7 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
       options: kind === 'choice' ? cleanOptions : [],
       allow_multiple: kind === 'choice' ? allowMultiple : false,
       scale_max: kind === 'rating' ? scaleMax : 5,
+      results_mode: resultsMode,
     });
     if (err) {
       setError(err);
@@ -144,6 +147,30 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
           </div>
         </fieldset>
       )}
+
+      <fieldset className="field">
+        <legend>Show results</legend>
+        <div className="pill-options">
+          <label className="pill-option">
+            <input type="radio" name="results" checked={resultsMode === 'live'} onChange={() => setResultsMode('live')} />
+            <span>Live, as votes come in</span>
+          </label>
+          <label className="pill-option">
+            <input
+              type="radio"
+              name="results"
+              checked={resultsMode === 'after_close'}
+              onChange={() => setResultsMode('after_close')}
+            />
+            <span>After I close voting</span>
+          </label>
+        </div>
+        <p className="field__hint">
+          {resultsMode === 'live'
+            ? 'The bars grow on the screen and on phones while people vote.'
+            : 'Results stay hidden (only the number of responses shows) until you click “Close voting”.'}
+        </p>
+      </fieldset>
 
       {error && <p className="notice notice--error">{error}</p>}
 
