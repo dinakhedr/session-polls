@@ -8,7 +8,7 @@ Participants join by scanning a QR code or typing a 6-digit code — no sign-up 
 - Organise work as **Partners → Programs → Sessions** (e.g. ICEALEX → ECH Impact Edition → Day 1)
 - Rename, duplicate and delete sessions; rename and delete partners and programs, with clear confirmations
 - Multiple-choice polls (one or several answers), rating scales (1–5 or 1–10) and **word clouds** (short typed answers; click a word on the presenter screen to remove it)
-- Per question: show results **live** or **only after voting closes**
+- Per question: show results **live** or **only after voting closes**, with an optional **timer** (e.g. 60 seconds) that closes voting and reveals results automatically
 - Duplicate a question or a whole session (with all its questions), without the votes
 - Full-screen presenter view with a QR code and results that update live
 - One vote per device per poll
@@ -99,6 +99,7 @@ When a new version needs a database change, an update file is added to the `supa
 |---|---|
 | `supabase/update-01-partners-programs.sql` | Partners, programs, result timing per question, duplicate question/session |
 | `supabase/update-02-word-cloud.sql` | Word cloud questions, with answer removal from the presenter screen |
+| `supabase/update-03-timer.sql` | Timed polls (countdown on phones and screen, automatic close and reveal) |
 
 New installations do not need update files: `supabase/schema.sql` already includes them.
 
@@ -125,7 +126,7 @@ New installations do not need update files: `supabase/schema.sql` already includ
 |---|---|---|
 | Next poll | Next poll → | → , Page Down, Space |
 | Previous poll / welcome screen | ← Previous | ← , Page Up |
-| Close or reopen voting (reveals results for "after closing" polls) | Close voting | V |
+| Close or reopen voting (reveals results for "after closing" polls); for timed polls: End now / Restart timer, plus a **+15 s** button | Close voting | V |
 | Hide or show results (screen and phones) | Hide results | R |
 | Hide or show the QR code | Hide QR | Q |
 | Full screen | Full screen | F |

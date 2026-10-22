@@ -36,6 +36,10 @@ export interface Poll {
   allow_multiple: boolean;
   scale_max: number;
   results_mode: ResultsMode;
+  /** Timer in seconds, or null for no timer. */
+  duration_seconds: number | null;
+  /** When voting ends for a running timed poll. */
+  closes_at: string | null;
   is_open: boolean;
 }
 
@@ -66,7 +70,11 @@ export interface LiveState {
     scale_max: number;
     is_open: boolean;
     results_mode?: ResultsMode;
+    duration_seconds?: number | null;
+    closes_at?: string | null;
   } | null;
+  /** Server clock, to keep countdowns in sync. */
+  server_now?: string;
   has_voted?: boolean;
   show_results?: boolean;
   results?: Results | null;
@@ -83,6 +91,10 @@ export const kindLabel = (p: { kind: PollKind; allow_multiple: boolean; scale_ma
 
 export const resultsLabel = (mode: ResultsMode | undefined) =>
   mode === 'after_close' ? 'Results after voting closes' : 'Live results';
+
+/** "45 s", "1:30", "2 min" */
+export const formatDuration = (s: number) =>
+  s < 60 ? `${s} s` : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} min`;
 
 /** Formats a join code as "123 456" for easier reading. */
 export const prettyCode = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;

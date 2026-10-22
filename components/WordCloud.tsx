@@ -30,7 +30,7 @@ export default function WordCloud({ words, dark = false, onRemove }: Props) {
       {centred.map((w) => {
         const rank = words.indexOf(w);
         const scale = max === min ? 0.6 : Math.sqrt((w.count - min) / (max - min));
-        const size = 1 + scale * 2.4; // 1em … 3.4em
+        const size = 1 + scale * 1.6; // 1em … 2.6em
         const label = `${w.text} — ${w.count} ${w.count === 1 ? 'answer' : 'answers'}`;
         const style = { fontSize: `${size.toFixed(2)}em` };
         const cls = `wordcloud__word wordcloud__word--${tone(rank)}`;

@@ -5,14 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SiteHeader from '@/components/SiteHeader';
 import Dialog, { type DialogConfig } from '@/components/Dialog';
+import IconButton from '@/components/Icon';
 import { supabase } from '@/lib/supabase';
 import { useHost } from '@/lib/useHost';
 import { contentsText, votesWarning } from '@/lib/deleteText';
+import { buildCsv, downloadFile } from '@/lib/csv';
+import { fetchAllVotes } from '@/lib/votes';
 import {
   delay,
   plural,
   prettyCode,
   type Partner,
+  type Poll,
   type Program,
   type Session,
   type SessionStat,
@@ -28,6 +32,7 @@ export default function DashboardPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState<Record<string, SessionStat>>({});
+  const [liveIds, setLiveIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
@@ -38,11 +43,12 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     const sb = supabase();
-    const [pa, pr, se, st] = await Promise.all([
+    const [pa, pr, se, st, op] = await Promise.all([
       sb.from('partners').select('id, name, created_at').order('name'),
       sb.from('programs').select('id, partner_id, name, created_at').order('name'),
       sb.from('sessions').select('*').order('created_at', { ascending: false }),
       sb.rpc('session_stats'),
+      sb.from('polls').select('id, closes_at').eq('is_open', true),
     ]);
     if (pa.error || pr.error || se.error) {
       setError(
@@ -58,6 +64,14 @@ export default function DashboardPage() {
     const map: Record<string, SessionStat> = {};
     for (const s of (st.data ?? []) as SessionStat[]) map[s.session_id] = s;
     setStats(map);
+    const now = Date.now();
+    setLiveIds(
+      new Set(
+        ((op.data ?? []) as { id: string; closes_at: string | null }[])
+          .filter((p) => !p.closes_at || new Date(p.closes_at).getTime() > now)
+          .map((p) => p.id)
+      )
+    );
   }, []);
 
   useEffect(() => {
@@ -215,6 +229,27 @@ export default function DashboardPage() {
     });
   }
 
+  async function exportSession(s: Session) {
+    setError(null);
+    try {
+      const { data, error } = await supabase()
+        .from('polls')
+        .select('*')
+        .eq('session_id', s.id)
+        .order('position')
+        .order('created_at');
+      if (error) throw error;
+      const polls = (data ?? []) as Poll[];
+      const votes = await fetchAllVotes(polls.map((p) => p.id));
+      const program = programs.find((p) => p.id === s.program_id);
+      const partner = (partners ?? []).find((p) => p.id === program?.partner_id);
+      const slug = s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session';
+      downloadFile(`${slug}-results.csv`, buildCsv(s.title, polls, votes, { partner: partner?.name, program: program?.name }));
+    } catch {
+      setError('The results could not be exported. Please try again.');
+    }
+  }
+
   function deleteSession(s: Session) {
     const st = stats[s.id];
     setDialog({
@@ -254,36 +289,58 @@ export default function DashboardPage() {
   if (!ready) return null;
 
   // ---------- Rendering ----------
-  const sessionCard = (s: Session, i: number) => {
+  const sessionRow = (s: Session) => {
     const st = stats[s.id];
+    const isLive = !!s.active_poll_id && liveIds.has(s.active_poll_id);
     return (
-      <div className="card card--white session-card fade-up" key={s.id} style={delay(`${Math.min(i, 8) * 0.04}s`)}>
-        <p className="card__kicker">{dateFmt.format(new Date(s.created_at))}</p>
-        <Link href={`/sessions/${s.id}`} className="card__title session-card__link">
-          {s.title}
-        </Link>
-        <div className="btn-row session-card__chips">
-          <span className="chip code-chip">Code {prettyCode(s.code)}</span>
-          <span className="chip">{plural(st?.poll_count ?? 0, 'poll')}</span>
-          <span className="chip">{plural(st?.vote_count ?? 0, 'response')}</span>
-        </div>
-        <div className="actions">
-          <Link href={`/sessions/${s.id}`} className="text-btn text-btn--strong">
-            Open
+      <div className="srow" key={s.id}>
+        <div className="srow__title">
+          <Link href={`/sessions/${s.id}`} title={s.title}>
+            {s.title}
           </Link>
-          <button className="text-btn" onClick={() => duplicateSession(s)}>
-            Duplicate
-          </button>
-          <button className="text-btn" onClick={() => renameSession(s)}>
-            Rename
-          </button>
-          <button className="text-btn text-btn--danger" onClick={() => deleteSession(s)}>
-            Delete
-          </button>
+          <span>
+            {dateFmt.format(new Date(s.created_at))}
+            {isLive && <b className="live-dot"> · Live now</b>}
+          </span>
+        </div>
+        <div className="srow__cell" data-l="Code">
+          <span className="chip code-chip chip--small">{prettyCode(s.code)}</span>
+        </div>
+        <div className="srow__cell num" data-l="Polls">
+          {st?.poll_count ?? 0}
+        </div>
+        <div className="srow__cell num" data-l="Responses">
+          {st?.vote_count ?? 0}
+        </div>
+        <div className="srow__acts">
+          <IconButton icon="present" label="Open presenter view" href={`/present/${s.id}`} newTab />
+          <IconButton icon="edit" label="Edit questions" onClick={() => router.push(`/sessions/${s.id}`)} />
+          <IconButton icon="copy" label="Duplicate" onClick={() => duplicateSession(s)} />
+          <IconButton icon="rename" label="Rename" onClick={() => renameSession(s)} />
+          <IconButton
+            icon="download"
+            label={(st?.vote_count ?? 0) > 0 ? 'Export CSV' : 'Export CSV (no responses yet)'}
+            onClick={() => exportSession(s)}
+            disabled={(st?.vote_count ?? 0) === 0}
+          />
+          <IconButton icon="trash" label="Delete" danger onClick={() => deleteSession(s)} />
         </div>
       </div>
     );
   };
+
+  const sessionGrid = (list: Session[]) => (
+    <div className="sgrid">
+      <div className="srow srow--head" aria-hidden="true">
+        <span>Session</span>
+        <span>Code</span>
+        <span>Polls</span>
+        <span>Responses</span>
+        <span className="srow__acts-head">Actions</span>
+      </div>
+      {list.map(sessionRow)}
+    </div>
+  );
 
   return (
     <div className="page">
@@ -380,12 +437,8 @@ export default function DashboardPage() {
                     <button className="btn btn--beige btn--sm" onClick={() => newProgram(pa)}>
                       + Program
                     </button>
-                    <button className="text-btn" onClick={() => renamePartner(pa)}>
-                      Rename
-                    </button>
-                    <button className="text-btn text-btn--danger" onClick={() => deletePartner(pa)}>
-                      Delete
-                    </button>
+                    <IconButton icon="rename" label="Rename partner" onClick={() => renamePartner(pa)} />
+                    <IconButton icon="trash" label="Delete partner" danger onClick={() => deletePartner(pa)} />
                   </div>
                 </div>
 
@@ -406,16 +459,12 @@ export default function DashboardPage() {
                           <button className="btn btn--dark btn--sm" onClick={() => newSessionIn(p)}>
                             + Session
                           </button>
-                          <button className="text-btn" onClick={() => renameProgram(p)}>
-                            Rename
-                          </button>
-                          <button className="text-btn text-btn--danger" onClick={() => deleteProgram(p)}>
-                            Delete
-                          </button>
+                          <IconButton icon="rename" label="Rename program" onClick={() => renameProgram(p)} />
+                          <IconButton icon="trash" label="Delete program" danger onClick={() => deleteProgram(p)} />
                         </div>
                       </div>
                       {list.length > 0 ? (
-                        <div className="grid">{list.map(sessionCard)}</div>
+                        sessionGrid(list)
                       ) : (
                         <p className="small text-muted">No sessions yet.</p>
                       )}
@@ -435,7 +484,7 @@ export default function DashboardPage() {
                   <p className="small text-muted">Open a session to assign it to a program.</p>
                 </div>
               </div>
-              <div className="grid">{unassigned.map(sessionCard)}</div>
+              {sessionGrid(unassigned)}
             </section>
           )}
         </div>

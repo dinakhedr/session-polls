@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import SiteHeader from '@/components/SiteHeader';
 import ResultsView from '@/components/ResultsView';
+import { CountdownRing, useCountdown } from '@/components/Countdown';
 import { roomChannel, supabase } from '@/lib/supabase';
 import { getVoterId } from '@/lib/voter';
 import type { LiveState } from '@/lib/types';
@@ -22,6 +23,7 @@ export default function ParticipantPage() {
   const [answer, setAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
   const requestSeq = useRef(0);
   const pollId = live?.poll?.id ?? null;
 
@@ -38,7 +40,9 @@ export default function ParticipantPage() {
         setStatus('notfound');
         return;
       }
-      setLive(data as LiveState);
+      const state = data as LiveState;
+      if (state.server_now) setOffset(new Date(state.server_now).getTime() - Date.now());
+      setLive(state);
       setStatus('ready');
     } catch {
       if (seq === requestSeq.current) setStatus((s) => (s === 'ready' ? s : 'error'));
@@ -78,6 +82,14 @@ export default function ParticipantPage() {
   }, [pollId]);
 
   const poll = live?.poll ?? null;
+
+  // Timed polls: count down, then fetch the closed state and results.
+  const left = useCountdown(poll?.is_open ? poll?.closes_at : null, offset, () => {
+    window.setTimeout(load, 700);
+    window.setTimeout(load, 2500);
+  });
+  const timeUp = left === 0;
+  const votingOpen = !!poll?.is_open && !timeUp;
 
   function toggleChoice(i: number) {
     if (!poll) return;
@@ -186,8 +198,17 @@ export default function ParticipantPage() {
                 <h1 className="h-section">{poll.question}</h1>
               </div>
 
+              {votingOpen && left !== null && poll.duration_seconds && (
+                <div className="timer-strip">
+                  <CountdownRing left={left} total={poll.duration_seconds} />
+                  <p className="timer-strip__text">
+                    {live.has_voted ? 'Results are revealed when time is up.' : 'Time left to answer'}
+                  </p>
+                </div>
+              )}
+
               {/* Voting */}
-              {poll.is_open && !live.has_voted && (
+              {votingOpen && !live.has_voted && (
                 <div className="stack">
                   {poll.kind === 'words' ? (
                     <form
@@ -267,22 +288,30 @@ export default function ParticipantPage() {
               )}
 
               {/* After voting, or when voting is closed */}
-              {(live.has_voted || !poll.is_open) && (
+              {(live.has_voted || !votingOpen) && (
                 <div className="stack">
                   <div className="card" aria-live="polite">
                     <div className="status-row">
                       <div className="stack stack--sm">
                         <p className="card__title">
-                          {live.has_voted ? 'Thank you, your vote is in.' : 'Voting is closed for this poll.'}
+                          {live.has_voted
+                            ? 'Thank you, your vote is in.'
+                            : timeUp
+                              ? 'Time is up.'
+                              : 'Voting is closed for this poll.'}
                         </p>
                         <p className="card__text">
                           {!live.show_results
                             ? 'Results will be shared on the main screen.'
                             : live.results
-                              ? poll.is_open
+                              ? votingOpen
                                 ? 'Results update live below.'
                                 : 'Final results are below.'
-                              : 'Results will appear here when voting closes.'}
+                              : poll.closes_at && votingOpen
+                                ? 'Results will appear here when time is up.'
+                                : timeUp
+                                  ? 'Loading the results…'
+                                  : 'Results will appear here when voting closes.'}
                         </p>
                       </div>
                       <div className={`status-icon${live.has_voted ? ' status-icon--done' : ''}`} aria-hidden="true">

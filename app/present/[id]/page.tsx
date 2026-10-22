@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import ResultsView from '@/components/ResultsView';
+import { CountdownRing, useCountdown } from '@/components/Countdown';
 import Dialog, { type DialogConfig } from '@/components/Dialog';
 import { roomChannel, supabase } from '@/lib/supabase';
 import { useHost } from '@/lib/useHost';
@@ -26,6 +27,8 @@ export default function PresenterPage() {
   const [idle, setIdle] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
+  const [offset, setOffset] = useState(0);
+  const onTimeUp = useRef<() => void>(() => {});
 
   const roomRef = useRef<RealtimeChannel | null>(null);
   const lastPhoneRefresh = useRef(0);
@@ -35,8 +38,12 @@ export default function PresenterPage() {
   const active = activeIndex >= 0 ? polls[activeIndex] : null;
   const activeId = active?.id ?? null;
   const joinUrl = session && origin ? `${origin}/join/${session.code}` : '';
+  // Timed polls: countdown in sync with the server clock; closes voting at zero.
+  const left = useCountdown(active?.is_open ? active.closes_at : null, offset, () => onTimeUp.current());
+  const timed = !!active?.duration_seconds;
+  const votingOpen = !!active?.is_open && left !== 0;
   // Results show when the host allows them, and — for "after closing" polls — once voting is closed.
-  const resultsVisible = !!session?.show_results && !!active && (active.results_mode !== 'after_close' || !active.is_open);
+  const resultsVisible = !!session?.show_results && !!active && (active.results_mode !== 'after_close' || !votingOpen);
 
   useEffect(() => setOrigin(window.location.origin), []);
 
@@ -81,7 +88,14 @@ export default function PresenterPage() {
   }, [loadResults]);
 
   useEffect(() => {
-    if (ready) loadSession();
+    if (!ready) return;
+    loadSession();
+    const t0 = Date.now();
+    supabase()
+      .rpc('server_now')
+      .then(({ data }) => {
+        if (data) setOffset(new Date(data as string).getTime() - (t0 + Date.now()) / 2);
+      });
   }, [ready, loadSession]);
 
   // Room channel: receives "refresh" from the session editor, sends "refresh" to phones.
@@ -152,13 +166,37 @@ export default function PresenterPage() {
     [session, polls, active, busy]
   );
 
-  const toggleVoting = useCallback(() => {
+  // When the countdown reaches zero: close voting, reveal results, update phones.
+  onTimeUp.current = () => {
+    const poll = active;
+    if (!poll) return;
+    supabase()
+      .from('polls')
+      .update({ is_open: false })
+      .eq('id', poll.id)
+      .eq('is_open', true)
+      .then(async () => {
+        await loadSession();
+        await loadResults();
+        notifyPhones();
+      });
+  };
+
+  const addTime = useCallback(() => {
     if (!active || busy) return;
     act(async () => {
-      check(await supabase().from('polls').update({ is_open: !active.is_open }).eq('id', active.id));
+      check(await supabase().rpc('extend_poll', { p_poll: active.id, p_seconds: 15 }));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, busy]);
+
+  const toggleVoting = useCallback(() => {
+    if (!active || busy) return;
+    act(async () => {
+      check(await supabase().from('polls').update({ is_open: !votingOpen }).eq('id', active.id));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, busy, votingOpen]);
 
   const toggleResults = useCallback(() => {
     if (!session || busy) return;
@@ -308,7 +346,14 @@ export default function PresenterPage() {
               </p>
               <h1 className="present__question">{active.question}</h1>
               <div className="present__meta">
-                {active.is_open ? <span className="chip chip--live">Voting open</span> : <span className="chip">Voting closed</span>}
+                {votingOpen && left !== null && active.duration_seconds ? (
+                  <CountdownRing left={left} total={active.duration_seconds} dark size="lg" />
+                ) : null}
+                {votingOpen ? (
+                  <span className="chip chip--live">Voting open</span>
+                ) : (
+                  <span className="chip">{timed && left === 0 ? 'Time is up' : 'Voting closed'}</span>
+                )}
                 <span>
                   {total} {total === 1 ? 'response' : 'responses'}
                 </span>
@@ -330,7 +375,9 @@ export default function PresenterPage() {
                     <span />
                   </div>
                   {session.show_results
-                    ? 'Results will be revealed when voting closes.'
+                    ? timed
+                      ? 'Results will be revealed when time is up.'
+                      : 'Results will be revealed when voting closes.'
                     : 'Results are hidden while people vote.'}
                 </div>
               )}
@@ -352,13 +399,22 @@ export default function PresenterPage() {
           >
             {activeIndex < 0 ? 'Start first poll' : 'Next poll'} →
           </button>
+          {active && votingOpen && timed && (
+            <button className="btn btn--ghost btn--sm" onClick={addTime} disabled={busy}>
+              +15 s
+            </button>
+          )}
           {active && (
             <button className="btn btn--ghost btn--sm" onClick={toggleVoting} disabled={busy}>
-              {active.is_open
-                ? active.results_mode === 'after_close' && session.show_results
-                  ? 'Close voting & reveal results'
-                  : 'Close voting'
-                : 'Reopen voting'}
+              {votingOpen
+                ? timed
+                  ? 'End now'
+                  : active.results_mode === 'after_close' && session.show_results
+                    ? 'Close voting & reveal results'
+                    : 'Close voting'
+                : timed
+                  ? 'Restart timer'
+                  : 'Reopen voting'}
             </button>
           )}
           <button className="btn btn--ghost btn--sm" onClick={toggleResults} disabled={busy}>

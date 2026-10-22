@@ -10,6 +10,7 @@ export interface PollDraft {
   allow_multiple: boolean;
   scale_max: number;
   results_mode: ResultsMode;
+  duration_seconds: number | null;
 }
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const MAX_OPTIONS = 10;
+const PRESETS = [30, 60, 90, 120];
 
 export default function PollForm({ initial, submitLabel, onSave, onCancel }: Props) {
   const [question, setQuestion] = useState(initial?.question ?? '');
@@ -30,12 +32,24 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
   const [allowMultiple, setAllowMultiple] = useState(initial?.allow_multiple ?? false);
   const [scaleMax, setScaleMax] = useState(initial?.scale_max ?? 5);
   const [resultsMode, setResultsMode] = useState<ResultsMode>(initial?.results_mode ?? 'live');
+  const [timer, setTimer] = useState<number | null>(initial?.duration_seconds ?? null);
+  const [custom, setCustom] = useState(
+    initial?.duration_seconds && !PRESETS.includes(initial.duration_seconds) ? String(initial.duration_seconds) : ''
+  );
+  const isCustom = timer !== null && !PRESETS.includes(timer);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
+  const timerValid = timer === null || (Number.isInteger(timer) && timer >= 5 && timer <= 3600);
   const valid =
-    question.trim().length > 0 && (kind !== 'choice' || cleanOptions.length >= 2);
+    question.trim().length > 0 && (kind !== 'choice' || cleanOptions.length >= 2) && timerValid;
+
+  /** Turning a timer on reveals results when time is up (can still be changed). */
+  function chooseTimer(seconds: number | null) {
+    if (seconds !== null && timer === null) setResultsMode('after_close');
+    setTimer(seconds);
+  }
 
   function setOption(i: number, value: string) {
     setOptions((o) => o.map((x, j) => (j === i ? value : x)));
@@ -57,6 +71,7 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
       allow_multiple: kind === 'choice' ? allowMultiple : false,
       scale_max: kind === 'rating' ? scaleMax : 5,
       results_mode: resultsMode,
+      duration_seconds: timer,
     });
     if (err) {
       setError(err);
@@ -158,6 +173,53 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
       )}
 
       <fieldset className="field">
+        <legend>Timer</legend>
+        <div className="pill-options">
+          <label className="pill-option">
+            <input type="radio" name="timer" checked={timer === null} onChange={() => chooseTimer(null)} />
+            <span>No timer</span>
+          </label>
+          {PRESETS.map((s) => (
+            <label className="pill-option" key={s}>
+              <input type="radio" name="timer" checked={timer === s} onChange={() => chooseTimer(s)} />
+              <span>{s < 120 ? `${s} s` : `${s / 60} min`}</span>
+            </label>
+          ))}
+          <label className="pill-option">
+            <input
+              type="radio"
+              name="timer"
+              checked={isCustom}
+              onChange={() => chooseTimer(Number(custom) || 45)}
+            />
+            <span>Custom</span>
+          </label>
+        </div>
+        {isCustom && (
+          <div className="timer-custom">
+            <input
+              type="number"
+              min={5}
+              max={3600}
+              step={5}
+              aria-label="Timer in seconds"
+              value={custom || String(timer)}
+              onChange={(e) => {
+                setCustom(e.target.value);
+                setTimer(Math.round(Number(e.target.value)) || 0);
+              }}
+            />
+            <span className="field__hint">seconds (5–3600)</span>
+          </div>
+        )}
+        <p className="field__hint">
+          {timer === null
+            ? 'Voting stays open until you close it.'
+            : 'A countdown shows on phones and on the screen. When it reaches zero, voting closes automatically.'}
+        </p>
+      </fieldset>
+
+      <fieldset className="field">
         <legend>Show results</legend>
         <div className="pill-options">
           <label className="pill-option">
@@ -171,7 +233,7 @@ export default function PollForm({ initial, submitLabel, onSave, onCancel }: Pro
               checked={resultsMode === 'after_close'}
               onChange={() => setResultsMode('after_close')}
             />
-            <span>After I close voting</span>
+            <span>{timer !== null ? 'When time is up' : 'After I close voting'}</span>
           </label>
         </div>
         <p className="field__hint">

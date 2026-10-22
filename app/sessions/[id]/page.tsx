@@ -16,6 +16,7 @@ import {
   plural,
   prettyCode,
   resultsLabel,
+  formatDuration,
   type Partner,
   type Poll,
   type Program,
@@ -368,6 +369,9 @@ export default function SessionEditorPage() {
                       <div className="btn-row" style={{ gap: 8 }}>
                         <span className="card__kicker">{kindLabel(p)}</span>
                         <span className="chip chip--white chip--small">{resultsLabel(p.results_mode)}</span>
+                        {p.duration_seconds ? (
+                          <span className="chip chip--white chip--small">⏱ {formatDuration(p.duration_seconds)}</span>
+                        ) : null}
                         {session.active_poll_id === p.id && <span className="chip chip--live">On screen</span>}
                       </div>
                       <p className="poll-item__q">{p.question}</p>
